@@ -1,3 +1,6 @@
+
+
+
 function notFound(req, res, next) {
 	const error = new Error(`Not found - ${req.originalUrl}`);
 	res.status(404);
@@ -16,6 +19,8 @@ function errorHandler(error, req, res, next) {
 		errors: error.errors || undefined,
 	});
 }
+
+
 
 module.exports = {
 	notFound,

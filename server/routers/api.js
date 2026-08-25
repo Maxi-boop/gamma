@@ -1,23 +1,13 @@
 const router = require("express").Router();
 const articleRouter = require("./articleRouter");
+const authRouter = require("./auth");
 const Staff = require("../models/Staff");
 
+const validateToken =
+  require("../middlewares/authenticationMiddleware").validateToken;
+
+router.use("/", validateToken);
 router.use("/article", articleRouter);
-
-// router.get("/:staff", async (req, res) => {
-//   try {
-//     let staffName = req.params.staff;
-//     const staff = await Staff.find({ name: "Ankki Dong" }).select(
-//       "name email slug created_at",
-//     );
-
-//     if (!staff) throw new Error("User does not exist");
-
-//     res.json(staff);
-//   } catch (error) {
-//     console.error(error);
-//     res.send(error);
-//   }
-// });
+router.use("/auth", authRouter);
 
 module.exports = router;

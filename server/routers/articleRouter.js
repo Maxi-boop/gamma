@@ -44,7 +44,7 @@ router.get("/", async (req, res, next) => {
       title: titleSchema,
     });
 
-    if (!zodBody.safeParse(jsonData)) {
+    if (!zodBody.safeParse(jsonData).success) {
       throw new Error(
         "Request is incorrectly formatted or does not include a title element.",
       );
@@ -70,17 +70,17 @@ router.get("/:volume/:issue", async (req, res, next) => {
     const issueParameter = req.params.issue;
 
     //THROW ERRORS FOR SCHEMA PROBLEMS.
-    if (!volumeSchema.safeParse(Number(volumeParameter)))
+    if (!volumeSchema.safeParse(Number(volumeParameter)).success)
       throw new Error(
         "Volume Parameter is not from 100-999, or is not a number.",
       );
-    if (!issueSchema.safeParse(Number(issueParameter)))
+    if (!issueSchema.safeParse(Number(issueParameter)).success)
       throw new Error("Issue Parameter is not from 1-30, or is not a number.");
 
     let article;
 
     if (jsonData && Object.hasOwn(jsonData, "title")) {
-      if (!zodBody.safeParse(jsonData))
+      if (!zodBody.safeParse(jsonData).success)
         throw new Error(
           "Request is incorrectly formatted or does not include a title element.",
         );
@@ -117,7 +117,7 @@ router.get("/author", async (req, res, next) => {
       throw new Error("Request does not have a body.");
     }
     //See if there is a formatting validation error.
-    if (!authorNameObject.safeParse(jsonData)) {
+    if (!authorNameObject.safeParse(jsonData).success) {
       throw new Error("Schema validation error.");
     }
     //Look for the staff memebr.
