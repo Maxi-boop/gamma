@@ -5,10 +5,14 @@ const { titleSchema, volumeSchema, issueSchema } =
 const { nameSchema, emailSchema } =
   require("../schemas/StaffSchema").otherSchemas;
 const Article = require("../models/ArticleModel");
+const Draft = require("../models/Draft");
 const Staff = require("../models/Staff");
 const z = require("zod");
+const validateAdmin =
+  require("../middlewares/authenticationMiddleware").validateAdmin;
 
-router.post("/", async (req, res, next) => {
+//CREATE A NEW DRAFT
+router.post("/draft", async (req, res, next) => {
   try {
     const jsonData = req.body;
 
@@ -22,7 +26,62 @@ router.post("/", async (req, res, next) => {
       throw new Error("Sent data does not match article schema.");
     }
 
-    console.log(jsonData);
+    //Validate tha title is not currently in use.
+    const findArticle = await Article.find({
+      $or: [{ title: jsonData.title }, { slug: jsonData.slug }],
+    });
+
+    if (findArticle && findArticle.length >= 1) {
+      res.status(409);
+      throw new Error("An article exists with the same title or slug.");
+    }
+
+    //Check to make sure that the person who created the draft exists
+    const drafter = req.user;
+    if (!drafter) {
+      res.status(400);
+      throw new Error("Error retrieving the creator of the draft.");
+    }
+
+    //Save the article on the database.
+    const newDraft = new Draft({ ...jsonData, drafter_id: req.user._id });
+    let savedDraft = newDraft.save();
+
+    res.send(jsonData);
+  } catch (error) {
+    next(error);
+  }
+});
+
+//CREATE A NEW ARTICLE ON THE SPECTATOR WEBSITE
+router.post("/push", validateAdmin, async (req, res, next) => {
+  try {
+    const jsonData = req.body;
+
+    //Check to see if there is a body found in the json data.
+    if (!jsonData) {
+      throw new Error("Request does not have a body.");
+    }
+
+    //MAKE SURE THAT THE SCHEMA MATCHES UP WITH THE DATA
+    if (!articleSchema.safeParse(jsonData).success) {
+      throw new Error("Sent data does not match article schema.");
+    }
+
+    //Validate that the article currently is not in existance.
+    const findArticle = await Article.find({
+      $or: [{ title: jsonData.title }, { slug: jsonData.slug }],
+    });
+
+    if (findArticle && findArticle.length >= 1) {
+      res.status(409);
+      throw new Error("An article exists with the same title or slug.");
+    }
+
+    //Save the article.
+    const article = new Article(jsonData);
+    let savedDraft = article.save();
+
     res.send(jsonData);
   } catch (error) {
     next(error);

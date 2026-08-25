@@ -6,7 +6,7 @@ const Staff = require("../models/Staff");
 const validateToken =
   require("../middlewares/authenticationMiddleware").validateToken;
 
-router.use("/", validateToken);
+router.use("/article", validateToken);
 router.use("/article", articleRouter);
 router.use("/auth", authRouter);
 
