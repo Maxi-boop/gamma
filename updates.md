@@ -1,3 +1,13 @@
+# 8/26/2026
+
+### What was added
+- Created more comprehensive middleware for validating articles.
+
+### Future Changes:
+- Add the images please!
+
+
+
 # 8/25/2026
 
 ### What was added: 

@@ -8,74 +8,72 @@ const Article = require("../models/ArticleModel");
 const Draft = require("../models/Draft");
 const Staff = require("../models/Staff");
 const z = require("zod");
+
+//IMPORTED MIDDLEWARE
 const validateAdmin =
   require("../middlewares/authenticationMiddleware").validateAdmin;
+const createSlugMiddleware =
+  require("../middlewares/articleMiddleware").createSlugMiddleware;
+const validateArticle =
+  require("../middlewares/articleMiddleware").validateArticleOriginalityMiddleware;
+const validateDraft =
+  require("../middlewares/articleMiddleware").validateDraftOriginalityMiddleware;
+const validateJsonBody =
+  require("../middlewares/generalMiddleware").validateJsonBody;
+const validateToken =
+  require("../middlewares/authenticationMiddleware").validateToken;
+
+router.use("/", validateToken);
+router.use("/", validateJsonBody);
+
 
 //CREATE A NEW DRAFT
-router.post("/draft", async (req, res, next) => {
-  try {
-    const jsonData = req.body;
+router.post(
+  "/draft",
+  createSlugMiddleware,
+  validateDraft,
+  validateArticle,
+  async (req, res, next) => {
+    try {
+      //MAKE SURE THAT THE SCHEMA MATCHES UP WITH THE DATA
+      if (!articleSchema.safeParse(jsonData).success) {
+        throw new Error("Sent data does not match article schema.");
+      }
 
-    //Check to see if there is a body found in the json data.
-    if (!jsonData) {
-      throw new Error("Request does not have a body.");
+      //Validate tha title is not currently in use.
+      const findArticle = await Article.find({
+        $or: [{ title: jsonData.title }, { slug: jsonData.slug }],
+      });
+
+      if (findArticle && findArticle.length >= 1) {
+        res.status(409);
+        throw new Error("An article exists with the same title or slug.");
+      }
+
+      //Check to make sure that the person who created the draft exists
+      const drafter = req.user;
+      if (!drafter) {
+        res.status(400);
+        throw new Error("Error retrieving the creator of the draft.");
+      }
+
+      //Save the article on the database.
+      const newDraft = new Draft({ ...jsonData, drafter_id: req.user._id });
+      let savedDraft = newDraft.save();
+
+      res.send(jsonData);
+    } catch (error) {
+      next(error);
     }
-
-    //MAKE SURE THAT THE SCHEMA MATCHES UP WITH THE DATA
-    if (!articleSchema.safeParse(jsonData).success) {
-      throw new Error("Sent data does not match article schema.");
-    }
-
-    //Validate tha title is not currently in use.
-    const findArticle = await Article.find({
-      $or: [{ title: jsonData.title }, { slug: jsonData.slug }],
-    });
-
-    if (findArticle && findArticle.length >= 1) {
-      res.status(409);
-      throw new Error("An article exists with the same title or slug.");
-    }
-
-    //Check to make sure that the person who created the draft exists
-    const drafter = req.user;
-    if (!drafter) {
-      res.status(400);
-      throw new Error("Error retrieving the creator of the draft.");
-    }
-
-    //Save the article on the database.
-    const newDraft = new Draft({ ...jsonData, drafter_id: req.user._id });
-    let savedDraft = newDraft.save();
-
-    res.send(jsonData);
-  } catch (error) {
-    next(error);
-  }
-});
+  },
+);
 
 //CREATE A NEW ARTICLE ON THE SPECTATOR WEBSITE
-router.post("/push", validateAdmin, async (req, res, next) => {
+router.post("/push", validateAdmin, validateArticle, async (req, res, next) => {
   try {
-    const jsonData = req.body;
-
-    //Check to see if there is a body found in the json data.
-    if (!jsonData) {
-      throw new Error("Request does not have a body.");
-    }
-
     //MAKE SURE THAT THE SCHEMA MATCHES UP WITH THE DATA
     if (!articleSchema.safeParse(jsonData).success) {
       throw new Error("Sent data does not match article schema.");
-    }
-
-    //Validate that the article currently is not in existance.
-    const findArticle = await Article.find({
-      $or: [{ title: jsonData.title }, { slug: jsonData.slug }],
-    });
-
-    if (findArticle && findArticle.length >= 1) {
-      res.status(409);
-      throw new Error("An article exists with the same title or slug.");
     }
 
     //Save the article.
@@ -91,13 +89,6 @@ router.post("/push", validateAdmin, async (req, res, next) => {
 //FOR GRABBING ARTICLE BASED ON TITLE ALONE
 router.get("/", async (req, res, next) => {
   try {
-    const jsonData = req.body;
-
-    //Check to see if there is a body found in the json data.
-    if (!jsonData) {
-      throw new Error("Request does not have a body.");
-    }
-
     //FOR CHECKING THE BODY TO MAKE SURE IT MACHES THE SCHEMA PROPERLY
     const zodBody = z.object({
       title: titleSchema,
@@ -120,7 +111,6 @@ router.get("/", async (req, res, next) => {
 //FOR GRABBING ARTICLE BASED ON VOLUME AND ISSUE (OPTIONAL: TITLE)
 router.get("/:volume/:issue", async (req, res, next) => {
   try {
-    const jsonData = req.body;
     const zodBody = z.object({
       title: titleSchema,
     });
@@ -166,7 +156,6 @@ router.get("/:volume/:issue", async (req, res, next) => {
 //USING ONLY THE NAME AND THE EMAIL
 router.get("/author", async (req, res, next) => {
   try {
-    const jsonData = req.body;
     const authorNameObject = z.object({
       name: nameSchema,
       email: emailSchema,
