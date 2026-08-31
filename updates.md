@@ -1,3 +1,10 @@
+# 8/30/2026
+- Added a pathway to upload files onto S3 bucket using a combination of MULTER (intake the fule) -> SHARP (compress the file) -> S3 (upload the file)
+
+### Future Changes:
+- Backend is complete! Maybe check that the file exists on the server before finish uploading. But woo! 
+
+
 # 8/26/2026
 
 ### What was added
